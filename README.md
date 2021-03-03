@@ -1,4 +1,5 @@
 # karelRedraw
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=welldoer_karelRedraw&metric=coverage)](https://sonarcloud.io/dashboard?id=welldoer_karelRedraw)
 
 ## 初始环境准备清单
 ~~1. 在 GitHub 中新建 repo~~
