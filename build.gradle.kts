@@ -2,6 +2,22 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "1.4.30"
+    id("org.sonarqube") version "3.1.1"
+    jacoco
+}
+
+sonarqube {
+    properties {
+        property("sonar.projectKey", "welldoer_karelRedraw")
+        property("sonar.organization", "welldoer-github")
+        property("sonar.host.url", "https://sonarcloud.io")
+    }
+}
+
+tasks.jacocoTestReport {
+    reports {
+        xml.isEnabled = true
+    }
 }
 
 group = "net.blogjava.welldoer"
@@ -30,6 +46,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
 }
 
 tasks.withType<KotlinCompile>() {
