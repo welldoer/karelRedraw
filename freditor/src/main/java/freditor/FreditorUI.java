@@ -14,6 +14,7 @@ import java.io.IOException;
 import javax.swing.JComponent;
 
 public class FreditorUI extends JComponent {
+    public static final int VISIBLE_LINES_ABOVE_CURSOR = 1;
     public static final int VISIBLE_LINES_BELOW_CURSOR = 1;
     public static final int width = Front.font.width;
     public static final int height = Front.font.height;
@@ -46,10 +47,15 @@ public class FreditorUI extends JComponent {
     private void adjustView() {
         int cursorLine = freditor.row();
         if (cursorLine < firstVisibleLine) {
-            firstVisibleLine = cursorLine;
+            firstVisibleLine = cursorLine - visibleLines() / 4;
+        } else if (cursorLine - VISIBLE_LINES_ABOVE_CURSOR < firstVisibleLine) {
+            firstVisibleLine = cursorLine - VISIBLE_LINES_ABOVE_CURSOR;
+        } else if (cursorLine > lastVisibleLine()) {
+            firstVisibleLine = cursorLine - visibleLines() * 3 / 4;
         } else if (cursorLine + VISIBLE_LINES_BELOW_CURSOR > lastVisibleLine()) {
             firstVisibleLine = cursorLine + VISIBLE_LINES_BELOW_CURSOR - visibleLines() + 1;
         }
+        firstVisibleLine = Math.max(0, firstVisibleLine);
         componentToRepaint.repaint();
     }
 
@@ -96,7 +102,21 @@ public class FreditorUI extends JComponent {
                         break;
 
                     case KeyEvent.VK_DELETE:
-                        freditor.deleteRight();
+                        if (event.isShiftDown()) {
+                            freditor.cut();
+                        } else {
+                            freditor.deleteRight();
+                        }
+                        break;
+
+                    case KeyEvent.VK_INSERT:
+                        if (event.isControlDown()) {
+                            freditor.copy();
+                        } else if (event.isShiftDown()) {
+                            freditor.paste();
+                        } else {
+                            freditor.deleteRight();
+                        }
                         break;
 
                     case KeyEvent.VK_LEFT:
@@ -328,13 +348,17 @@ public class FreditorUI extends JComponent {
         }
     }
 
-    public void setCursor(int position) {
-        freditor.setCursorTo(position);
-        adjustView();
+    public int cursor() {
+        return freditor.cursor();
     }
 
     public int lineOfPosition(int position) {
         return freditor.rowOfPosition(position);
+    }
+
+    public void setCursorTo(int position) {
+        freditor.setCursorTo(position);
+        adjustView();
     }
 
     public void setCursorTo(String prefix) {

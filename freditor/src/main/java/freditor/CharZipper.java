@@ -1,14 +1,8 @@
 package freditor;
 
-import static freditor.IntVector.empty;
+import freditor.vector.IntVector;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
+import java.io.*;
 
 public class CharZipper implements CharSequence {
     public final Flexer flexer;
@@ -17,11 +11,11 @@ public class CharZipper implements CharSequence {
         this.flexer = flexer;
     }
 
-    private IntVector before = empty;
-    private IntVector after = empty;
+    private IntVector before = IntVector.empty;
+    private IntVector after = IntVector.empty;
 
-    private IntVector lineBreaksBefore = empty;
-    private IntVector lineBreaksAfter = empty;
+    private IntVector lineBreaksBefore = IntVector.empty;
+    private IntVector lineBreaksAfter = IntVector.empty;
 
     private void pushLineBreakBefore() {
         lineBreaksBefore = lineBreaksBefore.push(before.length());
@@ -39,23 +33,20 @@ public class CharZipper implements CharSequence {
         lineBreaksAfter = lineBreaksAfter.pop();
     }
 
-    public Runnable remember() {
-        return new Runnable() {
-            private final IntVector before = CharZipper.this.before;
-            private final IntVector after = CharZipper.this.after;
+    protected class Memento {
+        private final IntVector before = CharZipper.this.before;
+        private final IntVector after = CharZipper.this.after;
 
-            private final IntVector lineBreaksBefore = CharZipper.this.lineBreaksBefore;
-            private final IntVector lineBreaksAfter = CharZipper.this.lineBreaksAfter;
+        private final IntVector lineBreaksBefore = CharZipper.this.lineBreaksBefore;
+        private final IntVector lineBreaksAfter = CharZipper.this.lineBreaksAfter;
 
-            @Override
-            public void run() {
-                CharZipper.this.before = before;
-                CharZipper.this.after = after;
+        public void restore() {
+            CharZipper.this.before = before;
+            CharZipper.this.after = after;
 
-                CharZipper.this.lineBreaksBefore = lineBreaksBefore;
-                CharZipper.this.lineBreaksAfter = lineBreaksAfter;
-            }
-        };
+            CharZipper.this.lineBreaksBefore = lineBreaksBefore;
+            CharZipper.this.lineBreaksAfter = lineBreaksAfter;
+        }
     }
 
     // CHARSEQUENCE
@@ -146,9 +137,9 @@ public class CharZipper implements CharSequence {
 
     public int rowOfPosition(int position) {
         if (position < before.length()) {
-            return lineBreaksBefore.binarySearch(position);
+            return binarySearch(lineBreaksBefore, position);
         } else {
-            return numberOfLineBreaks() - lineBreaksAfter.binarySearch(length() - position);
+            return numberOfLineBreaks() - binarySearch(lineBreaksAfter, length() - position);
         }
     }
 
@@ -167,14 +158,14 @@ public class CharZipper implements CharSequence {
     // TEXT MANIPULATION
 
     public void clear() {
-        before = empty;
-        after = empty;
+        before = IntVector.empty;
+        after = IntVector.empty;
 
-        lineBreaksBefore = empty;
-        lineBreaksAfter = empty;
+        lineBreaksBefore = IntVector.empty;
+        lineBreaksAfter = IntVector.empty;
     }
 
-    private void focus(int index) {
+    private void focusOn(int index) {
         while (index < before.length()) {
             int x = before.top();
             before = before.pop();
@@ -198,7 +189,7 @@ public class CharZipper implements CharSequence {
     }
 
     public void insertAt(int index, char x) {
-        focus(index);
+        focusOn(index);
         insertAtFocus(x);
         fixAfterStates();
     }
@@ -221,25 +212,25 @@ public class CharZipper implements CharSequence {
     }
 
     private void fixAfterStates() {
-        int n = 0;
         int state = stateAtFocus();
         while (!after.isEmpty()) {
-            int top = after.top();
-            state = flexer.nextState(state, (char) top);
-            if (state == top >> 16) break;
+            int x = after.top();
+            char c = (char) x;
+            int cachedState = x >> 16;
+            state = flexer.nextState(state, c);
+            if (state == cachedState) break;
+
             after = after.pop();
-            pushWithState((char) top, state);
-            ++n;
-        }
-        for (; n > 0; --n) {
-            int x = before.top();
-            before = before.pop();
-            after = after.push(x);
+            if (c == '\n') {
+                popLineBreakAfter();
+                pushLineBreakBefore();
+            }
+            pushWithState(c, state);
         }
     }
 
     public void insertAt(int index, String s) {
-        focus(index);
+        focusOn(index);
         insertAtFocus(s);
         fixAfterStates();
     }
@@ -252,19 +243,19 @@ public class CharZipper implements CharSequence {
     }
 
     public void insertSpacesAt(int index, int len) {
-        focus(index);
+        focusOn(index);
         for (; len > 0; --len) {
             insertAtFocus(' ');
         }
     }
 
     public void deleteSpacesAt(int index, int len) {
-        focus(index + len);
+        focusOn(index + len);
         before = before.take(index);
     }
 
     public void deleteLeftOf(int index) {
-        focus(index);
+        focusOn(index);
         if ((char) before.top() == '\n') {
             popLineBreakBefore();
         }
@@ -273,7 +264,7 @@ public class CharZipper implements CharSequence {
     }
 
     public void deleteRightOf(int index) {
-        focus(index);
+        focusOn(index);
         if ((char) after.top() == '\n') {
             popLineBreakAfter();
         }
@@ -282,10 +273,10 @@ public class CharZipper implements CharSequence {
     }
 
     public String deleteRange(int start, int end) {
-        focus(end);
+        focusOn(end);
         String result = beforeSlice(start, end);
 
-        int firstObsoleteLineBreak = lineBreaksBefore.binarySearch(start);
+        int firstObsoleteLineBreak = binarySearch(lineBreaksBefore, start);
         lineBreaksBefore = lineBreaksBefore.take(firstObsoleteLineBreak);
 
         before = before.take(start);
@@ -309,7 +300,7 @@ public class CharZipper implements CharSequence {
         int c = homePositionOfRow(below);
         int d = endPositionOfRow(below);
 
-        focus(d);
+        focusOn(d);
         String first = beforeSlice(a, b);
         String second = beforeSlice(c, d);
 
@@ -361,5 +352,24 @@ public class CharZipper implements CharSequence {
                 out.newLine();
             }
         }
+    }
+
+    // BINARY SEARCH
+
+    private static int binarySearch(IntVector lineBreaks, int key) {
+        int left = 0; // inclusive
+        int right = lineBreaks.length(); // exclusive
+        while (left < right) {
+            int middle = (left + right) >>> 1;
+            int element = lineBreaks.intAt(middle);
+            if (element < key) {
+                left = middle + 1; // inclusive
+            } else if (element > key) {
+                right = middle; // exclusive
+            } else {
+                return middle;
+            }
+        }
+        return left;
     }
 }
