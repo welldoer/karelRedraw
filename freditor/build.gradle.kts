@@ -1,5 +1,12 @@
 plugins {
     `java-library`
+    jacoco
+}
+
+tasks.jacocoTestReport {
+    reports {
+        xml.isEnabled = true
+    }
 }
 
 repositories {
@@ -24,4 +31,5 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
 }
