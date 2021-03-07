@@ -14,45 +14,40 @@ public abstract class JavaIndenter extends Indenter {
         final int rows = text.rows();
         int[] corrections = new int[rows];
         int indentation = 0;
-        int minimum = 0;
         for (int row = 0; row < rows; ++row) {
-            int line = text.homePositionOfRow(row);
-            corrections[row] = indentation + leadingClosers(line);
-            indentation = indentation + openersAndClosers(line);
-            minimum = Math.min(minimum, indentation);
-        }
-        for (int row = 0; row < rows; ++row) {
-            corrections[row] -= minimum;
-            corrections[row] -= text.leadingSpaces(text.homePositionOfRow(row));
+            int home = text.homePositionOfRow(row);
+            int end = text.endPositionOfRow(row);
+            corrections[row] = nonNegative(indentation + leadingClosers(home, end)) - text.leadingSpaces(home);
+            indentation = nonNegative(indentation + openersAndClosers(home, end));
         }
         return corrections;
     }
 
-    private int leadingClosers(int i) {
+    private static int nonNegative(int o) {
+        return o < 0 ? 0 : o;
+    }
+
+    private int leadingClosers(int home, int end) {
         int difference = 0;
-        final int len = text.length();
-        for (; i < len; ++i) {
-            int x = text.intAt(i);
-            int delta = indentationDelta(x >> 16);
+        int space = Flexer.FIRST_SPACE;
+        for (int i = home; i < end; ++i) {
+            int state = text.stateAt(i);
+            int delta = indentationDelta(state);
             if (delta < 0) {
                 difference += delta;
-            }
-            else if ((char) x != ' ') {
+            } else if (state != space) {
                 return difference;
             }
+            space = Flexer.NEXT_SPACE;
         }
         return difference;
     }
 
-    private int openersAndClosers(int i) {
+    private int openersAndClosers(int home, int end) {
         int difference = 0;
-        final int len = text.length();
-        for (; i < len; ++i) {
-            int x = text.intAt(i);
-            if ((char) x == '\n') {
-                return difference;
-            }
-            difference += indentationDelta(x >> 16);
+        for (int i = home; i < end; ++i) {
+            int state = text.stateAt(i);
+            difference += indentationDelta(state);
         }
         return difference;
     }
