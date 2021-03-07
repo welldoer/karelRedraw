@@ -16,8 +16,6 @@ package freditor;
 public abstract class Flexer {
     public static final int END = 0;
 
-    public abstract int indentationDelta(int state);
-
     public int pickColorForLexeme(int endState) {
         return 0x000000;
     }
@@ -61,4 +59,12 @@ public abstract class Flexer {
     }
 
     protected abstract int identifier(char input);
+
+    public String synthesizeOnInsert(int state, int nextState) {
+        return "";
+    }
+
+    public boolean preventInsertion(int nextState) {
+        return false;
+    }
 }

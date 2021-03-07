@@ -86,6 +86,12 @@ public final class Freditor extends CharZipper {
         adjustOrigin();
     }
 
+    public void setCursorTo(int row, int column) {
+        cursor = Math.min(homePositionOfRow(row) + column, endPositionOfRow(row));
+        desiredColumn = column;
+        adjustOrigin();
+    }
+
     public void setCursorTo(String prefix) {
         // TODO optimize
         int index = toString().indexOf(prefix);
@@ -186,7 +192,7 @@ public final class Freditor extends CharZipper {
             lastAction = EditorAction.SINGLE_INSERT;
         }
 
-        insertAt(cursor++, c);
+        insertWithSynthAt(cursor++, c);
         lastCursor = cursor;
         forgetDesiredColumn();
         adjustOrigin();
@@ -203,11 +209,11 @@ public final class Freditor extends CharZipper {
         lastAction = EditorAction.OTHER;
     }
 
-    public void onEnter(String synthesize) {
+    public void onEnter(char previousCharTyped) {
         deleteSelection();
         commit();
 
-        insertAt(cursor, synthesize);
+        insertAt(cursor, indenter.synthesizeOnEnterAfter(previousCharTyped));
         insertAt(cursor++, '\n');
         adjustOrigin();
         indent();
@@ -342,14 +348,20 @@ public final class Freditor extends CharZipper {
             cursor -= len;
             origin -= len;
 
-            int destination = endPositionOf(selectionEnd());
+            int destination = endPositionOf(selectionEndForLineMovement());
             insertAt(destination, '\n');
             insertAt(destination + 1, line);
         }
     }
 
+    private int selectionEndForLineMovement() {
+        // When multiple lines are selected, the last line should not be moved
+        // if the cursor is at the beginning of the line.
+        return selectionIsEmpty() ? selectionEnd() : selectionEnd() - 1;
+    }
+
     public void moveSelectedLinesDown() {
-        int below = rowOfPosition(selectionEnd()) + 1;
+        int below = rowOfPosition(selectionEndForLineMovement()) + 1;
         if (below < rows()) {
             if (lastAction != EditorAction.LINE_MOVE) {
                 commit();

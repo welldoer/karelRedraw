@@ -72,7 +72,7 @@ public class FreditorUI extends JComponent {
             @Override
             public void keyTyped(KeyEvent event) {
                 char c = event.getKeyChar();
-                lastCharWasOpeningBrace = (c == '{');
+                charTyped = c;
                 if (c >= 32 && c < 127 || c >= 160 && c < 256) {
                     if (!event.isControlDown()) {
                         freditor.insertCharacter(c);
@@ -81,16 +81,16 @@ public class FreditorUI extends JComponent {
                 adjustView();
             }
 
-            private boolean lastCharWasOpeningBrace;
+            private char charTyped;
 
             @Override
             public void keyPressed(KeyEvent event) {
                 event.consume();
-                boolean previousCharWasOpeningBrace = lastCharWasOpeningBrace;
-                lastCharWasOpeningBrace = false;
+                char previousCharTyped = charTyped;
+                charTyped = 0;
                 switch (event.getKeyCode()) {
                     case KeyEvent.VK_ENTER:
-                        freditor.onEnter(previousCharWasOpeningBrace ? "\n}" : "");
+                        freditor.onEnter(previousCharTyped);
                         break;
 
                     case KeyEvent.VK_TAB:
@@ -363,6 +363,11 @@ public class FreditorUI extends JComponent {
         adjustView();
     }
 
+    public void setCursorTo(int row, int column) {
+        freditor.setCursorTo(row, column);
+        adjustView();
+    }
+
     public void setCursorTo(String prefix) {
         freditor.setCursorTo(prefix);
         adjustView();
@@ -388,12 +393,14 @@ public class FreditorUI extends JComponent {
 
     public void loadFromFile(String pathname) throws IOException {
         freditor.loadFromFile(pathname);
-        componentToRepaint.repaint();
+        freditor.adjustOrigin();
+        adjustView();
     }
 
     public void loadFromString(String program) {
         freditor.loadFromString(program);
-        componentToRepaint.repaint();
+        freditor.adjustOrigin();
+        adjustView();
     }
 
     public void saveToFile(String pathname) throws IOException {
