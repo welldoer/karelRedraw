@@ -1,14 +1,16 @@
 package freditor;
 
-import freditor.persistent.CharVector;
+import freditor.persistent.ByteVector;
+
+import java.nio.charset.StandardCharsets;
 
 public class CharZipper implements CharSequence {
-    private CharVector before = CharVector.empty;
-    private CharVector after = CharVector.empty;
+    private ByteVector before = ByteVector.EMPTY;
+    private ByteVector after = ByteVector.EMPTY;
 
     protected class Memento {
-        private final CharVector before = CharZipper.this.before;
-        private final CharVector after = CharZipper.this.after;
+        private final ByteVector before = CharZipper.this.before;
+        private final ByteVector after = CharZipper.this.after;
 
         public void restore() {
             CharZipper.this.before = before;
@@ -16,11 +18,11 @@ public class CharZipper implements CharSequence {
         }
     }
 
-    protected CharVector before() {
+    protected ByteVector before() {
         return before;
     }
 
-    protected CharVector after() {
+    protected ByteVector after() {
         return after;
     }
 
@@ -28,14 +30,14 @@ public class CharZipper implements CharSequence {
 
     @Override
     public int length() {
-        return before.length() + after.length();
+        return before.size() + after.size();
     }
 
     @Override
     public char charAt(int index) {
-        if (index < before.length()) return before.charAt(index);
-        index -= before.length();
-        return after.charAt(after.length() - 1 - index);
+        if (index < before.size()) return charAt(before, index);
+        index -= before.size();
+        return charAt(after, after.size() - 1 - index);
     }
 
     @Override
@@ -48,17 +50,16 @@ public class CharZipper implements CharSequence {
         return new String(temp);
     }
 
-    @Override
-    public String toString() {
-        final int lenBefore = before.length();
-        final int lenAfter = after.length();
+    public byte[] toByteArray() {
+        final int lenBefore = before.size();
+        final int lenAfter = after.size();
         final int len = lenBefore + lenAfter;
-        char[] temp = new char[len];
+        byte[] temp = new byte[len];
 
         if (lenBefore < lenAfter) {
             after.copyIntoArray(temp, lenBefore);
             for (int i = lenBefore, k = temp.length - 1; i < k; ++i, --k) {
-                char x = temp[i];
+                byte x = temp[i];
                 temp[i] = temp[k];
                 temp[k] = x;
             }
@@ -69,25 +70,30 @@ public class CharZipper implements CharSequence {
             }
         }
         before.copyIntoArray(temp, 0);
-        return new String(temp, 0, len);
+        return temp;
+    }
+
+    @Override
+    public String toString() {
+        return new String(toByteArray(), StandardCharsets.ISO_8859_1);
     }
 
     // TEXT MANIPULATION
 
     public void clear() {
-        before = CharVector.empty;
-        after = CharVector.empty;
+        before = ByteVector.EMPTY;
+        after = ByteVector.EMPTY;
     }
 
     protected void focusOn(int index) {
-        int delta = index - before.length();
+        int delta = index - before.size();
         for (; delta < 0; ++delta) {
-            char x = before.top();
+            byte x = before.top();
             before = before.pop();
             after = after.push(x);
         }
         for (; delta > 0; --delta) {
-            char x = after.top();
+            byte x = after.top();
             after = after.pop();
             before = before.push(x);
         }
@@ -95,7 +101,7 @@ public class CharZipper implements CharSequence {
 
     public void insertAt(int index, char x) {
         focusOn(index);
-        before = before.push(x);
+        before = before.push((byte) x);
     }
 
     public void insertAt(int index, CharSequence s) {
@@ -103,29 +109,42 @@ public class CharZipper implements CharSequence {
         insertBeforeFocus(s);
     }
 
+    protected void insertBeforeFocus(byte[] bytes) {
+        final int len = bytes.length;
+        for (int i = 0; i < len; ) {
+            byte b = bytes[i++];
+            if (b != '\r') {
+                before = before.push(b);
+            } else if (i == len || bytes[i] != '\n') {
+                // convert Mac OS Classic "\r" to Unix "\n"
+                before = before.push((byte) '\n');
+            }
+        }
+    }
+
     protected void insertBeforeFocus(CharSequence s) {
         final int len = s.length();
         for (int i = 0; i < len; ++i) {
-            before = before.push(s.charAt(i));
+            before = before.push((byte) s.charAt(i));
         }
     }
 
     protected void insertAfterFocus(CharSequence s) {
         for (int i = s.length() - 1; i >= 0; --i) {
-            after = after.push(s.charAt(i));
+            after = after.push((byte) s.charAt(i));
         }
     }
 
-    public char deleteLeftOf(int index) {
+    public byte deleteLeftOf(int index) {
         focusOn(index);
-        char deleted = before.top();
+        byte deleted = before.top();
         before = before.pop();
         return deleted;
     }
 
-    public char deleteRightOf(int index) {
+    public byte deleteRightOf(int index) {
         focusOn(index);
-        char deleted = after.top();
+        byte deleted = after.top();
         after = after.pop();
         return deleted;
     }
@@ -141,8 +160,12 @@ public class CharZipper implements CharSequence {
         final int len = end - start;
         char[] temp = new char[len];
         for (int i = 0; i < len; ++i) {
-            temp[i] = before.charAt(start + i);
+            temp[i] = charAt(before, start + i);
         }
         return new String(temp);
+    }
+
+    private static char charAt(ByteVector v, int index) {
+        return (char) (v.byteAt(index) & 255);
     }
 }

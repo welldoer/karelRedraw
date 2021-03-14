@@ -1,9 +1,14 @@
 package freditor;
 
-import freditor.ephemeral.IntStack;
 import freditor.ephemeral.IntGapBuffer;
+import freditor.ephemeral.IntStack;
+import freditor.persistent.ByteVector;
 
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.function.IntConsumer;
 
@@ -74,11 +79,11 @@ public final class Freditor extends CharZipper {
         refreshLineBreaks(after(), lineBreaksAfter);
     }
 
-    private static void refreshLineBreaks(CharSequence text, IntStack lineBreaks) {
+    private static void refreshLineBreaks(ByteVector text, IntStack lineBreaks) {
         lineBreaks.clear();
-        final int len = text.length();
+        final int len = text.size();
         for (int i = 0; i < len; ++i) {
-            if (text.charAt(i) == '\n') {
+            if (text.byteAt(i) == '\n') {
                 lineBreaks.push(i);
             }
         }
@@ -113,7 +118,7 @@ public final class Freditor extends CharZipper {
     }
 
     public int rowOfPosition(int position) {
-        if (position < before().length()) {
+        if (position < before().size()) {
             return lineBreaksBefore.binarySearch(position);
         } else {
             return numberOfLineBreaks() - lineBreaksAfter.binarySearch(length() - position);
@@ -262,10 +267,10 @@ public final class Freditor extends CharZipper {
     @Override
     public void insertAt(int index, CharSequence s) {
         super.insertAt(index, s);
-        final CharSequence before = before();
-        final int end = before.length();
+        final ByteVector before = before();
+        final int end = before.size();
         for (int i = index; i < end; ++i) {
-            if (before.charAt(i) == '\n') {
+            if (before.byteAt(i) == '\n') {
                 lineBreaksBefore.push(i);
             }
             flexerStates.add(i, Integer.MIN_VALUE);
@@ -280,12 +285,12 @@ public final class Freditor extends CharZipper {
         }
         flexerStates.add(index, Integer.MIN_VALUE);
 
-        final int start = after().length();
+        final int start = after().size();
         insertAfterFocus(s);
-        final CharSequence after = after();
-        final int end = after.length();
+        final ByteVector after = after();
+        final int end = after.size();
         for (int i = start; i < end; ++i) {
-            if (after.charAt(i) == '\n') {
+            if (after.byteAt(i) == '\n') {
                 lineBreaksAfter.push(i);
             }
             flexerStates.add(index + 1, Integer.MIN_VALUE);
@@ -294,8 +299,8 @@ public final class Freditor extends CharZipper {
     }
 
     @Override
-    public char deleteLeftOf(int index) {
-        char deleted = super.deleteLeftOf(index);
+    public byte deleteLeftOf(int index) {
+        byte deleted = super.deleteLeftOf(index);
         if (deleted == '\n') {
             lineBreaksBefore.pop();
         }
@@ -305,8 +310,8 @@ public final class Freditor extends CharZipper {
     }
 
     @Override
-    public char deleteRightOf(int index) {
-        char deleted = super.deleteRightOf(index);
+    public byte deleteRightOf(int index) {
+        byte deleted = super.deleteRightOf(index);
         if (deleted == '\n') {
             lineBreaksAfter.pop();
         }
@@ -740,46 +745,46 @@ public final class Freditor extends CharZipper {
     // PERSISTENCE
 
     public void loadFromFile(String pathname) throws IOException {
-        loadFromReader(new FileReader(pathname));
+        loadFromBytes(Files.readAllBytes(Paths.get(pathname)));
     }
 
     public void loadFromString(String program) {
-        try {
-            loadFromReader(new StringReader(program));
-        } catch (IOException impossible) {
-            impossible.printStackTrace();
-        }
+        loadFromBytes(program.getBytes(StandardCharsets.ISO_8859_1));
     }
 
-    private void loadFromReader(Reader reader) throws IOException {
-        try (BufferedReader in = new BufferedReader(reader)) {
-            String line = in.readLine();
-            if (line != null) {
-                super.clear();
-                insertBeforeFocus(line);
-                while ((line = in.readLine()) != null) {
-                    insertBeforeFocus("\n");
-                    insertBeforeFocus(line);
-                }
-                refreshBookkeeping();
-                if (cursor >= length()) {
-                    cursor = length();
-                }
-                adjustOrigin();
-                forgetDesiredColumn();
-            }
+    private void loadFromBytes(byte[] bytes) {
+        super.clear();
+        insertBeforeFocus(bytes);
+        refreshBookkeeping();
+        if (cursor >= length()) {
+            cursor = length();
         }
+        adjustOrigin();
+        forgetDesiredColumn();
     }
 
     public void saveToFile(String pathname) throws IOException {
-        String text = toString();
-        try (BufferedWriter out = new BufferedWriter(new FileWriter(pathname))) {
-            for (int i = 0; i < rows(); ++i) {
-                int start = homePositionOfRow(i);
-                int end = endPositionOfRow(i);
-                out.write(text, start, end - start);
-                out.newLine();
+        try (FileOutputStream out = new FileOutputStream(pathname)) {
+            if ("\n".equals(System.lineSeparator())) {
+                out.write(toByteArray());
+            } else {
+                saveWithNativeLineSeparators(out);
             }
+        }
+    }
+
+    private void saveWithNativeLineSeparators(FileOutputStream out) throws IOException {
+        byte[] bytes = toByteArray();
+        int end = endPositionOfRow(0);
+        out.write(bytes, 0, end);
+
+        byte[] lineSeparator = System.lineSeparator().getBytes(StandardCharsets.ISO_8859_1);
+        for (int i = 1, rows = rows(); i < rows; ++i) {
+            out.write(lineSeparator);
+
+            int start = end + 1;
+            end = endPositionOfRow(i);
+            out.write(bytes, start, end - start);
         }
     }
 }

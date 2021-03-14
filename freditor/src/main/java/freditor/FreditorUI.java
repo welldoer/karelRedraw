@@ -422,7 +422,9 @@ public class FreditorUI extends JComponent {
             for (; i < k; ++i) {
                 char c = freditor.charAt(i);
                 if (c != '\n') {
-                    Front.font.drawCharacter(g, x, y, c, rgb);
+                    if (x >= 0) {
+                        Front.font.drawCharacter(g, x, y, c, rgb);
+                    }
                     x += fontWidth;
                     if (x < componentWidth) continue;
                     i = freditor.endPositionOf(i);
@@ -492,13 +494,11 @@ public class FreditorUI extends JComponent {
 
     public void loadFromFile(String pathname) throws IOException {
         freditor.loadFromFile(pathname);
-        freditor.adjustOrigin();
         adjustView();
     }
 
     public void loadFromString(String program) {
         freditor.loadFromString(program);
-        freditor.adjustOrigin();
         adjustView();
     }
 
