@@ -1,9 +1,8 @@
 package gui
 
 import logic.KarelError
-import logic.KarelWorld
+import logic.Problem
 import logic.World
-import logic.storyFor
 import parsing.Diagnostic
 import parsing.KarelSemantics
 import parsing.Lexer
@@ -11,30 +10,20 @@ import parsing.Parser
 import vm.CodeGenerator
 import vm.Instruction
 import vm.VirtualMachine
-import java.lang.reflect.Method
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.Timer
 
-open class MainFlow : MainDesign(AtomicReference(World.karelsFirstProgram)) {
+open class MainFlow : MainDesign(AtomicReference(Problem.karelsFirstProgram.createWorld())) {
 
-    val currentIndex: Int
-        get() = controlPanel.problemPicker.selectedIndex
-
-    val currentProblem: Method
-        get() = World.problemMethods[currentIndex]
-
-    val entryPoint: String
-        get() = World.problemNames[currentIndex]
-
-    val currentLevel: Int
-        get() = controlPanel.problemPicker.getItemAt(currentIndex)[0] - '0'
+    val currentProblem: Problem
+        get() = controlPanel.problemPicker.selectedItem as Problem
 
     fun delay(): Int {
         val logarithm = controlPanel.delayLogarithm()
         return if (logarithm < 0) logarithm else 1.shl(logarithm)
     }
 
-    var initialKarel: KarelWorld = atomicKarel.get()
+    var initialWorld: World = atomicWorld.get()
 
     lateinit var virtualMachine: VirtualMachine
 
@@ -50,18 +39,18 @@ open class MainFlow : MainDesign(AtomicReference(World.karelsFirstProgram)) {
 
     fun parseAndExecute() {
         processProgram { semantics ->
-            if (semantics.commands.contains(entryPoint)) {
+            if (semantics.commands.contains(currentProblem.name)) {
                 val instructions = CodeGenerator(semantics).generate()
                 start(instructions)
             } else {
-                showErrorDialog("undefined command $entryPoint", "Missing entry point")
+                showErrorDialog("undefined command ${currentProblem.name}", "Missing entry point")
             }
         }
     }
 
     fun start(instructions: List<Instruction>) {
         virtualMachinePanel.setProgram(instructions)
-        virtualMachine = VirtualMachine(instructions, atomicKarel, editor::push, editor::pop, this::infiniteLoopDetected)
+        virtualMachine = VirtualMachine(instructions, atomicWorld, editor::push, editor::pop, this::infiniteLoopDetected)
         controlPanel.executionStarted()
         update()
         if (delay() >= 0) {
@@ -88,7 +77,7 @@ open class MainFlow : MainDesign(AtomicReference(World.karelsFirstProgram)) {
             editor.setCursorTo(position)
         }
         virtualMachinePanel.update(virtualMachine.pc, virtualMachine.stack)
-        karelPanel.repaint()
+        worldPanel.repaint()
     }
 
     fun stepInto() {
@@ -120,7 +109,7 @@ open class MainFlow : MainDesign(AtomicReference(World.karelsFirstProgram)) {
             val parser = Parser(lexer)
             val program = parser.program()
 
-            val semantics = KarelSemantics(program, entryPoint, currentLevel)
+            val semantics = KarelSemantics(program, currentProblem.name, currentProblem.level)
             val errors = semantics.errors()
             if (errors.isEmpty()) {
                 how(semantics)
@@ -139,7 +128,7 @@ open class MainFlow : MainDesign(AtomicReference(World.karelsFirstProgram)) {
     }
 
     init {
-        story.loadFromString(storyFor(entryPoint))
+        story.loadFromString(currentProblem.story)
         editor.requestFocusInWindow()
     }
 }

@@ -1,14 +1,14 @@
 package logic
 
-import logic.World.EAST
-import logic.World.NORTH
+import logic.Problem.Companion.EAST
+import logic.Problem.Companion.NORTH
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class Week2Test : WorldTestBase() {
     @Test
     fun hangTheLampions() {
-        executeGoal("hangTheLampions")
+        executeGoal(Problem.hangTheLampions)
         assertKarelAt(9, 9, EAST)
         assertNumberOfBeepers(10)
         assertAllBeepersTouch(FloorPlan.WALL_NORTH)
@@ -16,46 +16,46 @@ class Week2Test : WorldTestBase() {
 
     @Test
     fun followTheSeeds() {
-        executeGoal("followTheSeeds")
+        executeGoal(Problem.followTheSeeds)
         assertKarelAt(9, 9, NORTH)
         assertNoBeepers()
     }
 
     @Test
     fun cleanTheTunnels() {
-        executeGoal("cleanTheTunnels")
+        executeGoal(Problem.cleanTheTunnels)
         assertKarelAt(9, 9, EAST)
         assertNoBeepers()
     }
 
     @Test
     fun increment() {
-        executeGoal("increment")
-        val before = initialKarel.binaryNumber()
-        val after = karel.binaryNumber()
+        executeGoal(Problem.increment)
+        val before = initialWorld.binaryNumber()
+        val after = world.binaryNumber()
         assertEquals((before + 1).and(255), after)
     }
 
     @Test
     fun decrement() {
-        executeGoal("decrement")
-        val before = initialKarel.binaryNumber()
-        val after = karel.binaryNumber()
+        executeGoal(Problem.decrement)
+        val before = initialWorld.binaryNumber()
+        val after = world.binaryNumber()
         assertEquals((before - 1).and(255), after)
     }
 
     @Test
     fun addSlow() {
-        executeGoal("addSlow")
-        val one = initialKarel.binaryNumber(0)
-        val two = initialKarel.binaryNumber(1)
-        val sum = karel.binaryNumber(1)
+        executeGoal(Problem.addSlow)
+        val one = initialWorld.binaryNumber(0)
+        val two = initialWorld.binaryNumber(1)
+        val sum = world.binaryNumber(1)
         assertEquals((one + two).and(255), sum)
     }
 
     @Test
     fun saveTheFlowers() {
-        executeGoal("saveTheFlowers")
+        executeGoal(Problem.saveTheFlowers)
         assertKarelAt(9, 9, EAST)
         assertNumberOfBeepers(4)
         assertAllBeepersTouch(FloorPlan.WALL_SOUTH)
@@ -64,42 +64,42 @@ class Week2Test : WorldTestBase() {
 
     @Test
     fun findTeddyBear() {
-        executeGoal("findTeddyBear")
+        executeGoal(Problem.findTeddyBear)
         assertSoleBeeperAtKarel()
     }
 
     @Test
     fun jumpTheHurdles() {
-        executeGoal("jumpTheHurdles")
-        val x = Integer.numberOfTrailingZeros((initialKarel.beepersHi.ushr(9 * 10 - 64)).toInt())
+        executeGoal(Problem.jumpTheHurdles)
+        val x = Integer.numberOfTrailingZeros((initialWorld.beepersHi.ushr(9 * 10 - 64)).toInt())
         assertKarelAt(x, 9, EAST)
         assertSoleBeeperAtKarel()
     }
 
     @Test
     fun solveTheMaze() {
-        executeGoal("solveTheMaze")
+        executeGoal(Problem.solveTheMaze)
         assertSoleBeeperAtKarel()
     }
 
     @Test
     fun quantize() {
-        executeGoal("quantize")
+        executeGoal(Problem.quantize)
         assertKarelAt(9, 9, EAST)
         for (x in 0..9) {
-            val expected = initialKarel.beeperAt(x, 4)
+            val expected = initialWorld.beeperAt(x, 4)
             for (y in 0..9) {
-                assertEquals(expected, karel.beeperAt(x, y))
+                assertEquals(expected, world.beeperAt(x, y))
             }
         }
     }
 
     @Test
     fun addFast() {
-        executeGoal("addFast")
-        val one = initialKarel.binaryNumber(0)
-        val two = initialKarel.binaryNumber(1)
-        val sum = karel.binaryNumber(3)
+        executeGoal(Problem.addFast)
+        val one = initialWorld.binaryNumber(0)
+        val two = initialWorld.binaryNumber(1)
+        val sum = world.binaryNumber(3)
         assertEquals((one + two).and(255), sum)
     }
 }

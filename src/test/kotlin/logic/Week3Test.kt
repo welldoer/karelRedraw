@@ -1,15 +1,16 @@
 package logic
 
-import logic.World.EAST
-import logic.World.WEST
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import logic.Problem.Companion.EAST
+import logic.Problem.Companion.NORTH
+import logic.Problem.Companion.SOUTH
+import logic.Problem.Companion.WEST
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class Week3Test : WorldTestBase() {
     @Test
     fun partyAgain() {
-        executeGoal("partyAgain")
+        executeGoal(Problem.partyAgain)
         assertKarelAt(9, 8, EAST)
         assertNumberOfBeepers(10)
         assertAllBeepersTouch(FloorPlan.WALL_NORTH)
@@ -17,7 +18,7 @@ class Week3Test : WorldTestBase() {
 
     @Test
     fun fetchTheStars() {
-        executeGoal("fetchTheStars")
+        executeGoal(Problem.fetchTheStars)
         assertKarelAt(9, 8, EAST)
         assertNumberOfBeepers(10)
         assertNoBeepersTouch(FloorPlan.WALL_NORTH)
@@ -25,22 +26,54 @@ class Week3Test : WorldTestBase() {
 
     @Test
     fun secureTheCave() {
-        executeGoal("secureTheCave")
+        executeGoal(Problem.secureTheCave)
         for (x in 0..9) {
-            val n = initialKarel.countBeepersInColumn(x)
+            val n = initialWorld.countBeepersInColumn(x)
             for (y in 0 until 10 - n) {
-                assertFalse(karel.beeperAt(x, y))
+                assertFalse(world.beeperAt(x, y))
             }
             for (y in 10 - n until 10) {
-                assertTrue(karel.beeperAt(x, y))
+                assertTrue(world.beeperAt(x, y))
             }
         }
     }
 
     @Test
     fun layAndRemoveTiles() {
-        executeGoal("layAndRemoveTiles")
+        executeGoal(Problem.layAndRemoveTiles)
         assertKarelAt(0, 9, WEST)
         assertNoBeepers()
+    }
+
+    @Test
+    fun findShelters() {
+        executeGoal(Problem.findShelters)
+        var floodWorld = initialWorld
+        val floorPlan = floodWorld.floorPlan
+
+        fun floodFill(x: Int, y: Int) {
+            if (floodWorld.beeperAt(x, y)) return
+
+            if (floorPlan.numberOfWallsAt(x, y) < 3) {
+                floodWorld = floodWorld.dropBeeper(x, y)
+            }
+
+            if (floorPlan.isClear(x, y, EAST)) {
+                floodFill(x + 1, y)
+            }
+            if (floorPlan.isClear(x, y, NORTH)) {
+                floodFill(x, y - 1)
+            }
+            if (floorPlan.isClear(x, y, WEST)) {
+                floodFill(x - 1, y)
+            }
+            if (floorPlan.isClear(x, y, SOUTH)) {
+                floodFill(x, y + 1)
+            }
+        }
+
+        floodFill(world.x, world.y)
+        assertEquals(floodWorld.beepersHi, world.beepersHi)
+        assertEquals(floodWorld.beepersLo, world.beepersLo)
     }
 }

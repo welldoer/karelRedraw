@@ -1,18 +1,14 @@
 package gui
 
-import logic.World
-import logic.binaryLinesIn
-import logic.goalFor
-import logic.storyFor
 import java.awt.event.KeyEvent
 
 class MainHandler : MainFlow() {
     init {
         controlPanel.goal.addActionListener {
-            atomicKarel.set(initialKarel)
-            karelPanel.repaint()
+            atomicWorld.set(initialWorld)
+            worldPanel.repaint()
 
-            executeGoal(goalFor(entryPoint))
+            executeGoal(currentProblem.goal)
             controlPanel.stepOver.isEnabled = false
             controlPanel.stepReturn.isEnabled = false
 
@@ -22,14 +18,14 @@ class MainHandler : MainFlow() {
         controlPanel.problemPicker.addActionListener {
             controlPanel.start_stop_reset.text = "start"
 
-            initialKarel = World.load(currentProblem)
-            atomicKarel.set(initialKarel)
-            karelPanel.binaryLines = binaryLinesIn(entryPoint)
-            karelPanel.repaint()
+            initialWorld = currentProblem.createWorld()
+            atomicWorld.set(initialWorld)
+            worldPanel.binaryLines = currentProblem.binaryLines
+            worldPanel.repaint()
 
-            story.loadFromString(storyFor(entryPoint))
+            story.loadFromString(currentProblem.story)
 
-            editor.setCursorTo("void $entryPoint()")
+            editor.setCursorTo("void ${currentProblem.name}()")
             editor.requestFocusInWindow()
         }
 
@@ -43,8 +39,8 @@ class MainHandler : MainFlow() {
 
                 "reset" -> {
                     controlPanel.start_stop_reset.text = "start"
-                    atomicKarel.set(initialKarel)
-                    karelPanel.repaint()
+                    atomicWorld.set(initialWorld)
+                    worldPanel.repaint()
                 }
             }
             editor.requestFocusInWindow()
