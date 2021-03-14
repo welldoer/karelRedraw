@@ -387,9 +387,23 @@ public final class Freditor extends CharZipper {
     }
 
     public String lexemeAtCursor() {
-        int start = startOfLexeme(cursor);
-        int end = Math.min(length(), endOfLexeme(cursor));
+        return lexemeAt(cursor);
+    }
+
+    private String lexemeAt(int index) {
+        int start = startOfLexeme(index);
+        int end = Math.min(length(), endOfLexeme(index));
         return subSequence(start, end);
+    }
+
+    public String symbolNearCursor(int symbolFirst) {
+        if (stateAt(cursor) <= symbolFirst) {
+            return lexemeAt(cursor);
+        } else if (cursor >= 1) {
+            return lexemeAt(cursor - 1);
+        } else {
+            return "";
+        }
     }
 
     // TEXT MANIPULATION
@@ -748,6 +762,11 @@ public final class Freditor extends CharZipper {
                     insertBeforeFocus(line);
                 }
                 refreshBookkeeping();
+                if (cursor >= length()) {
+                    cursor = length();
+                }
+                adjustOrigin();
+                forgetDesiredColumn();
             }
         }
     }
