@@ -1,12 +1,20 @@
 package freditor;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
+import java.awt.*;
 import java.util.stream.IntStream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+
 public class SystemClipboardTest {
+    @BeforeEach
+    public void skipSystemClipboardTestsInHeadlessEnvironment() {
+        assumeFalse(GraphicsEnvironment.isHeadless());
+    }
+
     @Test
     public void fox() {
         SystemClipboard.set("the quick brown fox jumped over the lazy dog");
