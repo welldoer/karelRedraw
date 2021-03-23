@@ -15,10 +15,10 @@ import java.util.function.IntConsumer;
 import static freditor.Maths.atLeastZero;
 
 public final class Freditor extends CharZipper {
-    private IntStack lineBreaksBefore;
-    private IntStack lineBreaksAfter;
+    private final IntStack lineBreaksBefore;
+    private final IntStack lineBreaksAfter;
 
-    private GapBuffer<FlexerState> flexerStates;
+    private final GapBuffer<FlexerState> flexerStates;
 
     public final Flexer flexer;
     public final Indenter indenter;
@@ -72,6 +72,13 @@ public final class Freditor extends CharZipper {
 
     public String getLineUntilCursor() {
         return subSequence(homePositionOf(cursor), cursor);
+    }
+
+    public String getTextUntilCursor() {
+        if (before().size() < cursor) {
+            focusOn(cursor);
+        }
+        return before().take(cursor).toString();
     }
 
     // LINE BREAKS
@@ -720,11 +727,8 @@ public final class Freditor extends CharZipper {
     public int leadingSpaces(int index) {
         int start = index;
         final int len = length();
-        if (index < len && stateAt(index) == Flexer.SPACE_HEAD) {
+        while (index < len && charAt(index) == ' ') {
             ++index;
-            while (index < len && stateAt(index) == Flexer.SPACE_TAIL) {
-                ++index;
-            }
         }
         return index - start;
     }

@@ -318,17 +318,11 @@ public class FreditorUI extends JComponent {
             }
         });
 
-        addMouseWheelListener(new MouseWheelListener() {
-            @Override
-            public void mouseWheelMoved(MouseWheelEvent event) {
-                int direction = event.getWheelRotation();
-                int amount = isControlRespectivelyCommandDown(event) ? visibleLines() / 2 : 3;
-                firstVisibleLine += direction * amount;
-                if (firstVisibleLine < 0) {
-                    firstVisibleLine = 0;
-                }
-                componentToRepaint.repaint();
-            }
+        addMouseWheelListener(event -> {
+            int direction = event.getWheelRotation();
+            int amount = isControlRespectivelyCommandDown(event) ? visibleLines() / 2 : 3;
+            firstVisibleLine = atLeastZero(firstVisibleLine + direction * amount);
+            componentToRepaint.repaint();
         });
     }
 
@@ -488,6 +482,10 @@ public class FreditorUI extends JComponent {
 
     public String getLineUntilCursor() {
         return freditor.getLineUntilCursor();
+    }
+
+    public String getTextUntilCursor() {
+        return freditor.getTextUntilCursor();
     }
 
     public void insertString(String s) {
