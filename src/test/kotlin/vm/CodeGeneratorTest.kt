@@ -1,8 +1,11 @@
 package vm
 
+import common.Diagnostic
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import parsing.*
+import syntax.lexer.Lexer
+import syntax.parser.Parser
+import syntax.parser.program
 
 class CodeGeneratorTest {
     private fun compile(sourceCode: String): List<Instruction> {

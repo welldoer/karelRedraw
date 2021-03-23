@@ -1,7 +1,7 @@
 package vm
 
-import parsing.*
-import util.IdentityGenerator
+import syntax.lexer.Token
+import syntax.tree.*
 
 typealias CommandNameId = Int
 typealias Address = Int
@@ -21,7 +21,7 @@ class CodeGenerator(private val semantics: KarelSemantics) {
     }
 
     private fun generateInstruction(bytecode: Int, token: Token) {
-        program.add(Instruction(bytecode, token.position))
+        program.add(Instruction(bytecode, token.start))
     }
 
     private val id = IdentityGenerator()

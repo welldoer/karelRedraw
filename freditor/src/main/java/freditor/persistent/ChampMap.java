@@ -1,6 +1,7 @@
 package freditor.persistent;
 
 import java.util.Arrays;
+import java.util.function.Function;
 
 import static java.lang.Integer.bitCount;
 
@@ -70,18 +71,24 @@ public class ChampMap<K, V> {
         return bitCount(usedKeyValues) * 2 + bitCount(usedSubMaps & (bitmask - 1));
     }
 
-    public V get(K key) {
-        return get(key, key.hashCode(), 0);
+    @SuppressWarnings("unchecked")
+    public K getKey(K key) {
+        return (K) get(key, key.hashCode(), 0, 0);
     }
 
     @SuppressWarnings("unchecked")
-    private V get(K key, int hash, int shift) {
+    public V get(K key) {
+        return (V) get(key, key.hashCode(), 0, 1);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object get(K key, int hash, int shift, int keyValueSelector) {
         if (shift >= 32) {
             // hash exhausted, fall back to linear search
             final int n = array.length;
             for (int i = 0; i < n; i += 2) {
                 if (array[i].equals(key)) {
-                    return (V) array[i + 1];
+                    return array[i + keyValueSelector];
                 }
             }
             return null;
@@ -92,13 +99,13 @@ public class ChampMap<K, V> {
 
         if ((usedSubMaps & bitmask) != 0) {
             ChampMap<K, V> subMap = (ChampMap<K, V>) array[subMapIndex(bitmask)];
-            return subMap.get(key, hash, shift + 5);
+            return subMap.get(key, hash, shift + 5, keyValueSelector);
         }
 
         if ((usedKeyValues & bitmask) != 0) {
             int keyIndex = keyIndex(bitmask);
             if (array[keyIndex].equals(key)) {
-                return (V) array[keyIndex + 1];
+                return array[keyIndex + keyValueSelector];
             }
         }
 
@@ -168,6 +175,34 @@ public class ChampMap<K, V> {
                 .put(key, value, hash, shift + 5);
 
         return new ChampMap<>(a, usedKeyValues ^ bitmask, usedSubMaps | bitmask);
+    }
+
+    public ChampMap<K, V> put(K k1, K k2, V value) {
+        return put(k1, value).put(k2, value);
+    }
+
+    public ChampMap<K, V> put(K k1, K k2, K k3, V value) {
+        return put(k1, value).put(k2, value).put(k3, value);
+    }
+
+    public ChampMap<K, V> put(K k1, K k2, K k3, K k4, V value) {
+        return put(k1, value).put(k2, value).put(k3, value).put(k4, value);
+    }
+
+    public ChampMap<K, V> put(K k1, K k2, K k3, K k4, K k5, V value) {
+        return put(k1, value).put(k2, value).put(k3, value).put(k4, value).put(k5, value);
+    }
+
+    public ChampMap<K, V> put(K k1, K k2, K k3, K k4, K k5, K k6, V value) {
+        return put(k1, value).put(k2, value).put(k3, value).put(k4, value).put(k5, value).put(k6, value);
+    }
+
+    public ChampMap<K, V> put(K[] keys, V value) {
+        ChampMap<K, V> result = this;
+        for (K key : keys) {
+            result = result.put(key, value);
+        }
+        return result;
     }
 
     @Override
