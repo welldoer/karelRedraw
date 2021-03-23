@@ -1,7 +1,7 @@
 package vm
 
 data class Instruction(val bytecode: Int, val position: Int) {
-    
+
     val category: Int
         get() = bytecode.and(0xf000)
 
@@ -12,57 +12,57 @@ data class Instruction(val bytecode: Int, val position: Int) {
         get() = position > 0
 
     fun withTarget(newTarget: Int): Instruction {
-            return copy(bytecode = category.or(newTarget))
-        }
+        return copy(bytecode = category.or(newTarget))
+    }
 
     fun mapTarget(f: (Int) -> Int): Instruction {
-            return withTarget(f(target))
-        }
+        return withTarget(f(target))
+    }
 
     fun shouldPause(): Boolean {
-            return when (bytecode) {
-                    RETURN -> compiledFromSource
-                    MOVE_FORWARD, TURN_LEFT, TURN_AROUND, TURN_RIGHT, PICK_BEEPER, DROP_BEEPER -> true
-                    ON_BEEPER, BEEPER_AHEAD, LEFT_IS_CLEAR, FRONT_IS_CLEAR, RIGHT_IS_CLEAR, NOT, AND, OR, XOR -> false
-                    else -> compiledFromSource && (category != JUMP)
-                }
+        return when (bytecode) {
+            RETURN -> compiledFromSource
+            MOVE_FORWARD, TURN_LEFT, TURN_AROUND, TURN_RIGHT, PICK_BEEPER, DROP_BEEPER -> true
+            ON_BEEPER, BEEPER_AHEAD, LEFT_IS_CLEAR, FRONT_IS_CLEAR, RIGHT_IS_CLEAR, NOT, AND, OR, XOR -> false
+            else -> compiledFromSource && (category != JUMP)
         }
+    }
 
     fun mnemonic(): String {
-            return when (bytecode) {
-                    RETURN -> "RET"
+        return when (bytecode) {
+            RETURN -> "RET"
 
-                    MOVE_FORWARD -> "MOVE"
-                    TURN_LEFT -> "TRNL"
-                    TURN_AROUND -> "TRNA"
-                    TURN_RIGHT -> "TRNR"
-                    PICK_BEEPER -> "PICK"
-                    DROP_BEEPER -> "DROP"
+            MOVE_FORWARD -> "MOVE"
+            TURN_LEFT -> "TRNL"
+            TURN_AROUND -> "TRNA"
+            TURN_RIGHT -> "TRNR"
+            PICK_BEEPER -> "PICK"
+            DROP_BEEPER -> "DROP"
 
-                    ON_BEEPER -> "BEEP"
-                    BEEPER_AHEAD -> "HEAD"
-                    LEFT_IS_CLEAR -> "LCLR"
-                    FRONT_IS_CLEAR -> "FCLR"
-                    RIGHT_IS_CLEAR -> "RCLR"
+            ON_BEEPER -> "BEEP"
+            BEEPER_AHEAD -> "HEAD"
+            LEFT_IS_CLEAR -> "LCLR"
+            FRONT_IS_CLEAR -> "FCLR"
+            RIGHT_IS_CLEAR -> "RCLR"
 
-                    NOT -> "NOT"
-                    AND -> "AND"
-                    OR -> "OR"
-                    XOR -> "XOR"
+            NOT -> "NOT"
+            AND -> "AND"
+            OR -> "OR"
+            XOR -> "XOR"
 
-                    else -> when (category) {
-                            PUSH -> "PUSH %03x".format(target)
-                            LOOP -> "LOOP %03x".format(target)
-                            CALL -> "CALL %03x".format(target)
+            else -> when (category) {
+                PUSH -> "PUSH %03x".format(target)
+                LOOP -> "LOOP %03x".format(target)
+                CALL -> "CALL %03x".format(target)
 
-                            JUMP -> "JUMP %03x".format(target)
-                            J0MP -> "J0MP %03x".format(target)
-                            J1MP -> "J1MP %03x".format(target)
+                JUMP -> "JUMP %03x".format(target)
+                J0MP -> "J0MP %03x".format(target)
+                J1MP -> "J1MP %03x".format(target)
 
-                            else -> throw IllegalBytecode(bytecode)
-                        }
-                }
+                else -> throw IllegalBytecode(bytecode)
+            }
         }
+    }
 }
 
 const val RETURN = 0x0000
@@ -96,23 +96,23 @@ const val J0MP = 0xc000
 const val J1MP = 0xd000
 
 val builtinCommands = mapOf(
-        "moveForward" to MOVE_FORWARD,
-        "turnLeft" to TURN_LEFT,
-        "turnAround" to TURN_AROUND,
-        "turnRight" to TURN_RIGHT,
-        "pickBeeper" to PICK_BEEPER,
-        "dropBeeper" to DROP_BEEPER)
+    "moveForward" to MOVE_FORWARD,
+    "turnLeft" to TURN_LEFT,
+    "turnAround" to TURN_AROUND,
+    "turnRight" to TURN_RIGHT,
+    "pickBeeper" to PICK_BEEPER,
+    "dropBeeper" to DROP_BEEPER)
 
 private val basicGoalInstructions = Array(XOR + 1) { Instruction(it, 0) }
 
-fun instructionBuffer(): MutableList<Instruction> {
-    return MutableList(START) { basicGoalInstructions[RETURN] }
+fun createInstructionBuffer(): MutableList<Instruction> {
+    return MutableList(vm.START) { basicGoalInstructions[RETURN] }
 }
 
 fun goalInstruction(bytecode: Int): Instruction {
     return if (bytecode <= XOR) {
-            basicGoalInstructions[bytecode]
-        } else {
-            Instruction(bytecode, 0)
-        }
+        basicGoalInstructions[bytecode]
+    } else {
+        Instruction(bytecode, 0)
+    }
 }

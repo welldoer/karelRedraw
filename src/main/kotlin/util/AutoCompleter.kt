@@ -1,7 +1,5 @@
 package util
 
-import java.util.Collections.singletonList
-
 private val command = Regex("""\p{javaJavaIdentifierStart}\p{javaJavaIdentifierPart}*\(\)""")
 private val reverse = Regex("""\)?\(?\p{javaJavaIdentifierPart}*\p{javaJavaIdentifierStart}""")
 
@@ -12,7 +10,7 @@ fun completeCommand(sourceCode: String, lineUntilCursor: String): List<String> {
     } else {
         val lcp = longestCommonPrefixOf(suffixes)
         if (!lcp.isEmpty()) {
-            singletonList(lcp)
+            listOf(lcp)
         } else {
             suffixes
         }
@@ -34,6 +32,7 @@ private fun longestCommonPrefixOf(commands: List<String>): String {
     return commands.fold(commands[0], ::longestCommonPrefix)
 }
 
+// TODO Is there an elegant AND EFFICIENT functional solution?
 private fun longestCommonPrefix(a: String, b: String): String {
     val n = Math.min(a.length, b.length)
     var i = 0

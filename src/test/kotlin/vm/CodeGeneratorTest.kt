@@ -2,11 +2,7 @@ package vm
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import parsing.Diagnostic
-import parsing.KarelSemantics
-import parsing.Lexer
-import parsing.Parser
-import java.util.Collections.emptyList
+import parsing.*
 
 class CodeGeneratorTest {
     private fun compile(sourceCode: String): List<Instruction> {

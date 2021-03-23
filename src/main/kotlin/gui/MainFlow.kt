@@ -3,14 +3,13 @@ package gui
 import logic.KarelError
 import logic.Problem
 import logic.World
-import parsing.Diagnostic
-import parsing.KarelSemantics
-import parsing.Lexer
-import parsing.Parser
+import parsing.*
 import vm.CodeGenerator
 import vm.Instruction
 import vm.VirtualMachine
+
 import java.util.concurrent.atomic.AtomicReference
+
 import javax.swing.Timer
 
 open class MainFlow : MainDesign(AtomicReference(Problem.karelsFirstProgram.createWorld())) {
@@ -32,7 +31,7 @@ open class MainFlow : MainDesign(AtomicReference(Problem.karelsFirstProgram.crea
     }
 
     fun executeGoal(goal: String) {
-        val instructions = vm.instructionBuffer()
+        val instructions = vm.createInstructionBuffer()
         instructions.addAll(goal.map { vm.goalInstruction(it.toInt()) })
         start(instructions)
     }

@@ -1,5 +1,7 @@
 package parsing
 
+import freditor.persistent.StringedValueMap
+
 typealias TokenKind = Byte
 
 class Token(val kind: TokenKind, val position: Int, val lexeme: String) {
@@ -12,9 +14,47 @@ class Token(val kind: TokenKind, val position: Int, val lexeme: String) {
     }
 
     override fun toString(): String = kind.show()
+
+    fun toInt(range: IntRange): Int {
+        try {
+            val n = lexeme.toInt()
+            if (n in range) return n
+        } catch (_: NumberFormatException) {
+            // intentional fallthrough
+        }
+        error("$lexeme out of range $range")
+    }
 }
 
-fun TokenKind.show(): String = allLexemes[+this]
+val lexemePool = arrayOf(
+    "beeperAhead",
+    "else",
+    "false",
+    "frontIsClear",
+    "if",
+    "leftIsClear",
+    "onBeeper",
+    "repeat",
+    "rightIsClear",
+    "true",
+    "void",
+    "while",
+    // keywords come first
+    "!", "&&", "(", ")", ";", "{", "||", "}",
+    "number", "identifier", "end of file"
+)
+
+const val NUM_KEYWORDS = 12
+
+class Keyword(val kind: TokenKind, val lexeme: String) {
+    override fun toString(): String = lexeme
+}
+
+val keywords: StringedValueMap<Keyword> = lexemePool.take(NUM_KEYWORDS).foldIndexed(StringedValueMap.empty()) { index, map, lexeme ->
+    map.put(Keyword(index.toByte(), lexeme))
+}
+
+fun TokenKind.show(): String = lexemePool[+this]
 
 const val BEEPER_AHEAD: TokenKind = 0
 const val ELSE: TokenKind = 1

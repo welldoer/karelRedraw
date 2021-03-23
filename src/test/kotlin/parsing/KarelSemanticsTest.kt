@@ -2,7 +2,6 @@ package parsing
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import java.util.Collections.emptyList
 import kotlin.test.fail
 
 const val whileLoop = """

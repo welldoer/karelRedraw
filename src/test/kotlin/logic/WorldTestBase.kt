@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 //import org.junit.jupiter.api.Assertions.fail
 import kotlin.test.fail
 import vm.VirtualMachine
+
 import java.util.concurrent.atomic.AtomicReference
 
 open class WorldTestBase {
@@ -11,7 +12,7 @@ open class WorldTestBase {
     protected var world: World = Problem.emptyWorld
 
     protected fun executeGoal(problem: Problem) {
-        val instructions = vm.instructionBuffer()
+        val instructions = vm.createInstructionBuffer()
         instructions.addAll(problem.goal.map { vm.goalInstruction(it.toInt()) })
         initialWorld = problem.createWorld()
         val atomicWorld = AtomicReference<World>(initialWorld)

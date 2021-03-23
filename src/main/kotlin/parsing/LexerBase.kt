@@ -1,16 +1,24 @@
 package parsing
 
+const val EOF = '\u0000'
+
 abstract class LexerBase(private val input: String) {
 
-    protected var start: Int = -1
-    protected var index: Int = -1
-    protected var current: Char = next()
+    var start: Int = -1
+        private set
 
-    protected fun next(): Char = nextOr('\u007f')
+    var index: Int = -1
+        private set
 
-    protected fun nextOr(end: Char): Char {
-        ++index
-        current = if (index < input.length) input[index] else end
+    fun startAtIndex() {
+        start = index
+    }
+
+    var current: Char = next()
+        private set
+
+    fun next(): Char {
+        current = if (++index < input.length) input[index] else EOF
         return current
     }
 
