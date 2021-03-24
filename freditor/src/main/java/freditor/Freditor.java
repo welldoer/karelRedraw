@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.function.IntConsumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static freditor.Maths.atLeastZero;
 
@@ -70,15 +72,17 @@ public final class Freditor extends CharZipper {
         return desiredColumn;
     }
 
-    public String getLineUntilCursor() {
-        return subSequence(homePositionOf(cursor), cursor);
+    public String getLineBeforeSelection() {
+        int selectionStart = selectionStart();
+        return subSequence(homePositionOf(selectionStart), selectionStart);
     }
 
-    public String getTextUntilCursor() {
-        if (before().size() < cursor) {
-            focusOn(cursor);
+    public String getTextBeforeSelection() {
+        int selectionStart = selectionStart();
+        if (before().size() < selectionStart) {
+            focusOn(selectionStart);
         }
-        return before().take(cursor).toString();
+        return before().take(selectionStart).toString();
     }
 
     // LINE BREAKS
@@ -370,11 +374,11 @@ public final class Freditor extends CharZipper {
         adjustOrigin();
     }
 
-    public void setCursorTo(String prefix) {
-        // TODO optimize
-        int index = toString().indexOf(prefix);
-        if (index != -1) {
-            setCursorTo(index);
+    public void setCursorTo(String regex, int group) {
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(toString());
+        if (matcher.find()) {
+            setCursorTo(matcher.start(group));
         }
     }
 
@@ -395,10 +399,10 @@ public final class Freditor extends CharZipper {
     }
 
     public String symbolNearCursor(FlexerState symbolTail) {
-        // coerce literal prefixes to symbol
-        if (stateAt(cursor).next(':') == symbolTail) {
+        // coerce keyword/literal prefixes to symbol
+        if (stateAt(cursor).next('0') == symbolTail) {
             return lexemeAt(cursor);
-        } else if (cursor >= 1) {
+        } else if (cursor >= 1 && stateAt(cursor - 1).next('0') == symbolTail) {
             return lexemeAt(cursor - 1);
         } else {
             return "";
@@ -432,6 +436,10 @@ public final class Freditor extends CharZipper {
         past.push(new Memento());
         future.pop().restore();
         lastAction = EditorAction.OTHER;
+    }
+
+    public void uncommit() {
+        past.pop();
     }
 
     private boolean deleteSelection() {
@@ -552,6 +560,21 @@ public final class Freditor extends CharZipper {
         int row = row();
         deleteRange(homePositionOfRow(row), homePositionOfRow(row + 1));
         setRowAndColumn(row, desiredColumn);
+        adjustOrigin();
+        lastAction = EditorAction.OTHER;
+    }
+
+    public void replace(String regex, String replacement) {
+        String text = toString();
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(text);
+        String replaced = matcher.replaceAll(replacement);
+
+        commit();
+        int row = row();
+        int column = column();
+        loadFromString(replaced);
+        setRowAndColumn(row, column);
         adjustOrigin();
         lastAction = EditorAction.OTHER;
     }

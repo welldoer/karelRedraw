@@ -3,10 +3,15 @@ package gui
 import freditor.Autosaver
 import freditor.FreditorUI
 import freditor.JavaIndenter
+import syntax.lexer.keywords
+import vm.builtinCommands
 
 import java.awt.*
 import java.awt.event.KeyEvent
 import java.awt.geom.Line2D
+import javax.swing.JOptionPane
+
+private val NAME = Regex("""[A-Z_a-z][0-9A-Z_a-z]*""")
 
 class Editor : FreditorUI(Flexer, JavaIndenter.instance, 60, 1) {
     val autosaver: Autosaver = newAutosaver("karel")
@@ -30,33 +35,62 @@ void karelsFirstProgram()
         listenToKeyboard()
     }
 
+    fun insertCommand(command: String) {
+        if (lineBeforeSelection.all(Char::isWhitespace)) {
+            insertString(command)
+        } else {
+            simulateEnter()
+            insertString(command)
+            // remove the commit between simulateEnter and insertString,
+            // effectively committing both changes as a single commit
+            uncommit()
+        }
+    }
+
     private fun listenToKeyboard() {
         onKeyPressed { event ->
             when (event.keyCode) {
-                KeyEvent.VK_F1 -> insertString("moveForward();")
-                KeyEvent.VK_F2 -> insertString("turnLeft();")
-                KeyEvent.VK_F3 -> insertString("turnAround();")
-                KeyEvent.VK_F4 -> insertString("turnRight();")
+                KeyEvent.VK_F1 -> insertCommand("moveForward();")
+                KeyEvent.VK_F2 -> insertCommand("turnLeft();")
+                KeyEvent.VK_F3 -> insertCommand("turnAround();")
+                KeyEvent.VK_F4 -> insertCommand("turnRight();")
+                KeyEvent.VK_F5 -> insertCommand("pickBeeper();")
+                KeyEvent.VK_F6 -> insertCommand("dropBeeper();")
 
-                KeyEvent.VK_F5 -> insertString("pickBeeper();")
-                KeyEvent.VK_F6 -> insertString("dropBeeper();")
                 KeyEvent.VK_F7 -> insertString("onBeeper()")
                 KeyEvent.VK_F8 -> insertString("beeperAhead()")
-
                 KeyEvent.VK_F9 -> insertString("leftIsClear()")
                 KeyEvent.VK_F10 -> insertString("frontIsClear()")
                 KeyEvent.VK_F11 -> insertString("rightIsClear()")
 
                 KeyEvent.VK_SPACE -> if (event.isControlDown) {
-                    val suffixes = completeCommand(text, lineUntilCursor)
-                    when (suffixes.size) {
-                        0 -> {
-                        }
+                    autocompleteCall()
+                }
 
-                        1 -> insertString(suffixes[0])
+                KeyEvent.VK_R -> if (event.isAltDown && event.isShiftDown) {
+                    renameCommand()
+                }
+            }
+        }
+    }
 
-                        else -> println(suffixes.joinToString(", "))
-                    }
+    private fun autocompleteCall() {
+        val suffixes = autocompleteCall(text, lineBeforeSelection)
+        if (suffixes.size == 1) {
+            insertString(suffixes[0])
+        } else {
+            println(suffixes.sorted().joinToString(", "))
+        }
+    }
+
+    private fun renameCommand() {
+        val oldName = symbolNearCursor(Flexer.IDENTIFIER_TAIL)
+        if (oldName.isNotEmpty() && oldName !in keywords && oldName !in builtinCommands) {
+            val input = JOptionPane.showInputDialog(this, oldName, "rename command", JOptionPane.QUESTION_MESSAGE, null, null, oldName)
+            if (input != null) {
+                val newName = input.toString()
+                if (NAME.matches(newName) && newName !in keywords && newName !in builtinCommands) {
+                    replace("""$oldName(\s*\(\s*\))""", "$newName$1")
                 }
             }
         }
