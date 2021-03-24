@@ -1,13 +1,19 @@
 package vm
 
 import common.Diagnostic
+import logic.Problem
 import syntax.tree.*
 
-class KarelSemantics(val program: Program, entryPoint: String, val targetLevel: Int) {
+class KarelSemantics(val program: Program, entryPoint: String = program.commands.first().identifier.lexeme) {
+    companion object {
+        val whileEnablers: List<String> = Problem.problems.filter { it.level >= 2 }.map { it.name }
+
+        val recursionEnablers: List<String> = Problem.problems.filter { it.level >= 3 }.map { it.name }
+    }
 
     val commands: Map<String, Command> = program.commands.associateBy { it.identifier.lexeme }
 
-    val calleesOf: Map<Command, List<Command>> = program.commands.associate { it to commandsCalledBy(it) }
+    val calleesOf: Map<Command, List<Command>> = program.commands.associateWith { commandsCalledBy(it) }
 
     private fun commandsCalledBy(command: Command): List<Command> {
         return callsInside(command).mapNotNull { (target) -> commands[target.lexeme] }
@@ -80,7 +86,7 @@ class KarelSemantics(val program: Program, entryPoint: String, val targetLevel: 
     }
 
     private fun illegalWhileLoops(): List<Diagnostic> {
-        return if (targetLevel < 2) {
+        return if (whileEnablers.none(commands::containsKey)) {
             whileLoops().map { Diagnostic(it.whi1e.start, "while loops are not allowed yet") }
         } else {
             emptyList()
@@ -101,7 +107,7 @@ class KarelSemantics(val program: Program, entryPoint: String, val targetLevel: 
     }
 
     private fun illegalRecursion(): List<Diagnostic> {
-        return if (targetLevel < 3) {
+        return if (recursionEnablers.none(commands::containsKey)) {
             recursiveCommands().map { Diagnostic(it.identifier.start, "recursion is not allowed yet") }
         } else {
             emptyList()

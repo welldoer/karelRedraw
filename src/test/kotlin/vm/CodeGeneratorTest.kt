@@ -13,7 +13,7 @@ class CodeGeneratorTest {
         val parser = Parser(lexer)
         val program = parser.program()
 
-        val semantics = KarelSemantics(program, "main", targetLevel = 3)
+        val semantics = KarelSemantics(program)
         assertEquals(emptyList<Diagnostic>(), semantics.errors())
 
         val codeGenerator = CodeGenerator(semantics)
@@ -22,7 +22,7 @@ class CodeGeneratorTest {
 
     private fun assertBytecode(sourceCode: String, vararg bytecodes: Int) {
         val expected = bytecodes.map { bytecode -> "%x".format(bytecode) }
-        val actual = compile(sourceCode).drop(vm.START).map { (bytecode) -> "%x".format(bytecode) }
+        val actual = compile(sourceCode).drop(ENTRY_POINT).map { (bytecode) -> "%x".format(bytecode) }
         assertEquals(expected, actual)
     }
 
@@ -247,7 +247,7 @@ class CodeGeneratorTest {
     @Test
     fun whi1e() {
         assertBytecode("""
-            void main() {
+            void hangTheLampions() {
                 while (beeperAhead()) {
                     moveForward();
                     pickBeeper();
@@ -264,12 +264,12 @@ class CodeGeneratorTest {
     @Test
     fun recursion() {
         assertBytecode("""
-            void main() {
+            void partyAgain() {
                 if (!frontIsClear()) {
                     turnAround();
                 } else {
                     moveForward();
-                    main();
+                    partyAgain();
                     moveForward();
                 }
             }
@@ -314,7 +314,7 @@ class CodeGeneratorTest {
     @Test
     fun infiniteLoop() {
         assertBytecode("""
-            void main() {
+            void hangTheLampions() {
                 while (true) {
                     turnLeft();
                 }
