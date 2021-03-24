@@ -1,7 +1,7 @@
 package vm
 
-import gui.Stack
-import gui.push
+import common.Stack
+import common.push
 import logic.World
 import java.util.concurrent.atomic.AtomicReference
 
@@ -14,13 +14,15 @@ const val TIMEOUT = 10000000000L
 // from truth values and loop counters on the stack.
 const val ENTRY_POINT = 256
 
-data class IllegalBytecode(val bytecode: Int) : Exception("%04x".format(bytecode))
-
-class VirtualMachine(val program: List<Instruction>,
+class VirtualMachine(private val program: List<Instruction>,
                      private val atomicWorld: AtomicReference<World>,
-                     private val onCall: (Int, Int) -> Unit,
-                     private val onReturn: () -> Unit,
-                     private val onInfiniteLoop: () -> Unit) {
+                     private val callbacks: Callbacks) {
+
+    interface Callbacks {
+        fun onCall(callerPosition: Int, calleePosition: Int) {}
+        fun onReturn() {}
+        fun onInfiniteLoop() {}
+    }
 
     var pc: Int = ENTRY_POINT
         private set(value) {
@@ -31,20 +33,20 @@ class VirtualMachine(val program: List<Instruction>,
     val currentInstruction: Instruction
         get() = program[pc]
 
-    var stack: Stack<Int> = Stack.Nil
+    var stack: Stack<StackValue> = Stack.Nil
         private set
 
     private var callDepth: Int = 0
 
-    private fun push(x: Int) {
+    private fun push(x: StackValue) {
         stack = stack.push(x)
     }
 
     private fun push(x: Boolean) {
-        stack = stack.push(if (x) 1 else 0)
+        stack = stack.push(if (x) Bool.TRUE else Bool.FALSE)
     }
 
-    private fun pop(): Int {
+    private fun pop(): StackValue {
         val result = stack.top()
         stack = stack.pop()
         return result
@@ -79,7 +81,7 @@ class VirtualMachine(val program: List<Instruction>,
             executeOneInstruction()
         }
         if (callDepth > targetDepth) {
-            onInfiniteLoop()
+            callbacks.onInfiniteLoop()
         }
     }
 
@@ -93,8 +95,8 @@ class VirtualMachine(val program: List<Instruction>,
                 CALL -> executeCall()
 
                 JUMP -> pc = target
-                J0MP -> pc = if (pop() == 0) target else pc + 1
-                J1MP -> pc = if (pop() != 0) target else pc + 1
+                ELSE -> pc = if (pop() === Bool.FALSE) target else pc + 1
+                THEN -> pc = if (pop() === Bool.TRUE) target else pc + 1
 
                 else -> throw IllegalBytecode(bytecode)
             }
@@ -102,14 +104,18 @@ class VirtualMachine(val program: List<Instruction>,
     }
 
     private fun Instruction.executePush() {
-        push(target)
+        push(when (target) {
+            0 -> Bool.FALSE
+            1 -> Bool.TRUE
+            else -> LoopCounter(target)
+        })
         ++pc
     }
 
     private fun Instruction.executeLoop() {
-        val remaining = pop() - 1
+        val remaining = (pop() as LoopCounter).value - 1
         if (remaining > 0) {
-            push(remaining)
+            push(LoopCounter(remaining))
             pc = target
         } else {
             ++pc
@@ -118,15 +124,15 @@ class VirtualMachine(val program: List<Instruction>,
 
     private fun Instruction.executeCall() {
         val returnInstruction = program.asSequence().drop(target).find { it.bytecode == RETURN }
-        onCall(position, returnInstruction!!.position)
-        push(pc)
+        callbacks.onCall(position, returnInstruction!!.position)
+        push(ReturnAddress(pc))
         ++callDepth
         pc = target
     }
 
     private fun executeReturn() {
-        onReturn()
-        pc = pop()
+        callbacks.onReturn()
+        pc = (pop() as ReturnAddress).value
         --callDepth
     }
 
@@ -147,10 +153,10 @@ class VirtualMachine(val program: List<Instruction>,
             FRONT_IS_CLEAR -> push(atomicWorld.get().frontIsClear())
             RIGHT_IS_CLEAR -> push(atomicWorld.get().rightIsClear())
 
-            NOT -> push(pop() == 0)
-            AND -> push(pop() and pop())
-            OR -> push(pop() or pop())
-            XOR -> push(pop() xor pop())
+            NOT -> push(pop() === Bool.FALSE)
+            AND -> push((pop() === Bool.TRUE) and (pop() === Bool.TRUE))
+            OR -> push((pop() === Bool.TRUE) or (pop() === Bool.TRUE))
+            XOR -> push((pop() === Bool.TRUE) xor (pop() === Bool.TRUE))
 
             else -> throw IllegalBytecode(bytecode)
         }

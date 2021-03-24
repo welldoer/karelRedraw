@@ -331,6 +331,24 @@ public class FreditorUI extends JComponent {
             firstVisibleLine = atLeastZero(firstVisibleLine + direction * amount);
             componentToRepaint.repaint();
         });
+
+        addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent event) {
+                repaint();
+            }
+
+            @Override
+            public void focusLost(FocusEvent event) {
+                if (event.getOppositeComponent() instanceof JButton) {
+                    // Error dialogs steal the focus from the editor,
+                    // but the cursor should remain visible because
+                    // it marks the position associated with the error.
+                    return;
+                }
+                repaint();
+            }
+        });
     }
 
     public String lexemeAtCursor() {
@@ -347,7 +365,9 @@ public class FreditorUI extends JComponent {
         paintCurrentLineOrSelection(g);
         paintMatchingParensBackground(g);
         paintLexemes(g);
-        paintCursor(g);
+        if (hasFocus()) {
+            paintCursor(g);
+        }
     }
 
     private int x(int column) {
@@ -495,8 +515,13 @@ public class FreditorUI extends JComponent {
         return freditor.getTextBeforeSelection();
     }
 
-    public void insertString(String s) {
+    public void insert(CharSequence s) {
         freditor.insert(s);
+        componentToRepaint.repaint();
+    }
+
+    public void append(CharSequence s) {
+        freditor.insertAt(freditor.length(), s);
         componentToRepaint.repaint();
     }
 
