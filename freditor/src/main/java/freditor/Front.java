@@ -7,47 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 
-import static javax.swing.JOptionPane.QUESTION_MESSAGE;
-import static javax.swing.JOptionPane.showInputDialog;
-
 public class Front {
-    public static final String scale = pickFontScale();
-    public static final Front front = Front.read("/font.png").scaled(scale);
-
-    public static final int point = scale2point(scale);
-    public static final Font monospaced = new Font(Font.MONOSPACED, Font.PLAIN, point);
-    public static final Font sansSerif = new Font(Font.SANS_SERIF, Font.PLAIN, point);
-
-    private static String pickFontScale() {
-        String title = "Almost there...";
-        String prompt = "Please pick a font scale:";
-        String[] possibilities = {"25%", "33%", "50%", "66%", "75%", "100%"};
-        int screenHeight = Toolkit.getDefaultToolkit().getScreenSize().height;
-        String defaultChoice = screenHeight < 1000 ? "33%" : screenHeight < 1500 ? "50%" : "75%";
-        Object choice = showInputDialog(null, prompt, title, QUESTION_MESSAGE, null, possibilities, defaultChoice);
-        return choice != null ? choice.toString() : defaultChoice;
-    }
-
-    private static int scale2point(String scale) {
-        switch (scale) {
-            case "25%":
-                return 12;
-            case "33%":
-            default:
-                return 16;
-            case "50%":
-                return 24;
-            case "66%":
-                return 32;
-            case "75%":
-                return 36;
-            case "100%":
-                return 48;
-        }
-    }
-
-    private static final int COPY_BLUE_INTO_ALL_CHANNELS = 0x01010101;
-
     private final int[] argb;
     private final int imageWidth;
     private final int imageHeight;
@@ -70,7 +30,13 @@ public class Front {
         copyBlueIntoAllChannels();
     }
 
-    public static Front read(String pathname) {
+    private void copyBlueIntoAllChannels() {
+        for (int i = 0; i < argb.length; ++i) {
+            argb[i] = (argb[i] & 255) * 0x01010101;
+        }
+    }
+
+    static Front read(String pathname) {
         try {
             InputStream resource = Front.class.getResourceAsStream(pathname);
             BufferedImage image = ImageIO.read(resource);
@@ -85,32 +51,7 @@ public class Front {
         }
     }
 
-    public Front scaled(String scale) {
-        switch (scale) {
-            case "25%":
-                return halfScaled().halfScaled();
-
-            case "33%":
-                return thirdScaled();
-
-            case "50%":
-                return halfScaled();
-
-            case "66%":
-                return doubleScaled().thirdScaled();
-
-            case "75%":
-                return tripleScaled().halfScaled().halfScaled();
-
-            case "100%":
-                return this;
-
-            default:
-                throw new IllegalArgumentException(scale);
-        }
-    }
-
-    private Front halfScaled() {
+    Front halfScaled() {
         final int size = argb.length;
         int[] scaled = new int[size / 4];
         int dst = 0;
@@ -122,93 +63,71 @@ public class Front {
                 int c = argb[src + imageWidth] & 255;
                 int d = argb[src + imageWidth + 1] & 255;
 
-                scaled[dst++] = ((a + b + c + d + 2) / 4) * COPY_BLUE_INTO_ALL_CHANNELS;
+                scaled[dst++] = ((a + b + c + d + 2) / 4) * 0x01010101;
             }
         }
         return new Front(scaled, imageWidth / 2, imageHeight / 2);
     }
 
-    private Front thirdScaled() {
-        final int size = argb.length;
+    Front thirdScaled(int virtualScale) {
+        final int size = argb.length * virtualScale * virtualScale;
         int[] scaled = new int[size / 9];
-        final int imageWidth2 = imageWidth * 2;
+        final int width = this.imageWidth * virtualScale;
+        final int height = this.imageHeight * virtualScale;
         int dst = 0;
-        for (int src = 0; src < size; src += imageWidth2) {
-            for (int x = 0; x < imageWidth; x += 3, src += 3) {
-                int a = argb[src] & 255;
-                int b = argb[src + 1] & 255;
-                int c = argb[src + 2] & 255;
 
-                int d = argb[src + imageWidth] & 255;
-                int e = argb[src + imageWidth + 1] & 255;
-                int f = argb[src + imageWidth + 2] & 255;
+        final long reciprocal = 0x100000000L / virtualScale + 1;
+        final long WIDTH = width * reciprocal;
+        final long HEIGHT = height * reciprocal;
 
-                int g = argb[src + imageWidth2] & 255;
-                int h = argb[src + imageWidth2 + 1] & 255;
-                int i = argb[src + imageWidth2 + 2] & 255;
+        for (long Y = 0; Y < HEIGHT; Y += 3 * reciprocal) {
+            int y0 = (int) (Y >>> 32) * this.imageWidth;
+            int y1 = (int) ((Y + reciprocal) >>> 32) * this.imageWidth;
+            int y2 = (int) ((Y + 2 * reciprocal) >>> 32) * this.imageWidth;
 
-                scaled[dst++] = ((a + b + c + d + e + f + g + h + i + 4) / 9) * COPY_BLUE_INTO_ALL_CHANNELS;
+            for (long X = 0; X < WIDTH; X += 3 * reciprocal) {
+                int x0 = (int) (X >>> 32);
+                int x1 = (int) ((X + reciprocal) >>> 32);
+                int x2 = (int) ((X + 2 * reciprocal) >>> 32);
+
+                int a = argb[y0 + x0] & 255;
+                int b = argb[y0 + x1] & 255;
+                int c = argb[y0 + x2] & 255;
+
+                int d = argb[y1 + x0] & 255;
+                int e = argb[y1 + x1] & 255;
+                int f = argb[y1 + x2] & 255;
+
+                int g = argb[y2 + x0] & 255;
+                int h = argb[y2 + x1] & 255;
+                int i = argb[y2 + x2] & 255;
+
+                scaled[dst++] = ((a + b + c + d + e + f + g + h + i + 4) / 9) * 0x01010101;
             }
         }
-        return new Front(scaled, imageWidth / 3, imageHeight / 3);
+        return new Front(scaled, width / 3, height / 3);
     }
 
-    private Front doubleScaled() {
-        int[] scaled = new int[argb.length * 4];
-        final int size = scaled.length;
-        final int imageWidth2 = imageWidth * 2;
+    Front scaled(int scale) {
+        int[] scaled = new int[argb.length * scale * scale];
+        final int width = imageWidth * scale;
+        final int stride = width * (scale - 1);
         int src = 0;
-        for (int dst = 0; dst < size; dst += imageWidth2) {
-            for (int x = 0; x < imageWidth; ++x, dst += 2) {
-                int nearest = argb[src++];
-
-                scaled[dst] = nearest;
-                scaled[dst + 1] = nearest;
-
-                scaled[dst + imageWidth2] = nearest;
-                scaled[dst + imageWidth2 + 1] = nearest;
+        for (int dst = 0; dst < scaled.length; dst += stride) {
+            for (int x = 0; x < imageWidth; ++x) {
+                fillSquare(scaled, width, dst, scale, argb[src++]);
+                dst += scale;
             }
         }
-        return new Front(scaled, imageWidth2, imageHeight * 2);
+        return new Front(scaled, width, imageHeight * scale);
     }
 
-    private Front tripleScaled() {
-        int[] scaled = new int[argb.length * 9];
-        final int size = scaled.length;
-        final int imageWidth3 = imageWidth * 3;
-        final int imageWidth6 = imageWidth * 6;
-        int src = 0;
-        for (int dst = 0; dst < size; dst += imageWidth6) {
-            for (int x = 0; x < imageWidth; ++x, dst += 3) {
-                int nearest = argb[src++];
-
-                scaled[dst] = nearest;
-                scaled[dst + 1] = nearest;
-                scaled[dst + 2] = nearest;
-
-                scaled[dst + imageWidth3] = nearest;
-                scaled[dst + imageWidth3 + 1] = nearest;
-                scaled[dst + imageWidth3 + 2] = nearest;
-
-                scaled[dst + imageWidth6] = nearest;
-                scaled[dst + imageWidth6 + 1] = nearest;
-                scaled[dst + imageWidth6 + 2] = nearest;
+    private void fillSquare(int[] array, int width, int offset, int size, int value) {
+        for (int y = 0; y < size; ++y) {
+            for (int x = 0; x < size; ++x) {
+                array[offset + x] = value;
             }
-        }
-        return new Front(scaled, imageWidth3, imageHeight * 3);
-    }
-
-    private void copyBlueIntoAllChannels() {
-        final int size = argb.length;
-        for (int i = 0; i < size; ++i) {
-            argb[i] = (argb[i] & 255) * COPY_BLUE_INTO_ALL_CHANNELS;
-        }
-    }
-
-    private void fillWithColor(int rgb) {
-        final int size = argb.length;
-        for (int i = 0; i < size; ++i) {
-            argb[i] = argb[i] & 0xff000000 | rgb;
+            offset += width;
         }
     }
 
@@ -224,6 +143,12 @@ public class Front {
             colored.put(rgb, result);
         }
         return result;
+    }
+
+    private void fillWithColor(int rgb) {
+        for (int i = 0; i < argb.length; ++i) {
+            argb[i] = argb[i] & 0xff000000 | rgb;
+        }
     }
 
     public void drawCharacter(Graphics g, int x, int y, char c, int rgb) {

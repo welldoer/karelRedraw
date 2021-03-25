@@ -194,32 +194,25 @@ public final class Freditor extends CharZipper {
     public void findOpeningParen(int start, IntConsumer onPresent, Runnable onMissing) {
         int nesting = 0;
         for (int i = cursor - 1; i >= start; --i) {
-            FlexerState state = stateAt(i);
-            if (state == Flexer.CLOSING_PAREN || state == Flexer.CLOSING_BRACKET || state == Flexer.CLOSING_BRACE) {
-                --nesting;
-            } else if (state == Flexer.OPENING_PAREN || state == Flexer.OPENING_BRACKET || state == Flexer.OPENING_BRACE) {
-                if (nesting == 0) {
-                    onPresent.accept(i);
-                    return;
-                }
-                ++nesting;
+            nesting += Flexer.nestingDelta.getOrDefault(stateAt(i), 0);
+            if (nesting > 0) {
+                onPresent.accept(i);
+                return;
             }
         }
         onMissing.run();
     }
 
+    public static final Runnable doNothing = () -> {
+    };
+
     public void findClosingParen(int end, IntConsumer onPresent, Runnable onMissing) {
         int nesting = 0;
         for (int i = cursor; i < end; ++i) {
-            FlexerState state = stateAt(i);
-            if (state == Flexer.OPENING_PAREN || state == Flexer.OPENING_BRACKET || state == Flexer.OPENING_BRACE) {
-                ++nesting;
-            } else if (state == Flexer.CLOSING_PAREN || state == Flexer.CLOSING_BRACKET || state == Flexer.CLOSING_BRACE) {
-                if (nesting == 0) {
-                    onPresent.accept(i);
-                    return;
-                }
-                --nesting;
+            nesting += Flexer.nestingDelta.getOrDefault(stateAt(i), 0);
+            if (nesting < 0) {
+                onPresent.accept(i);
+                return;
             }
         }
         onMissing.run();
@@ -574,7 +567,12 @@ public final class Freditor extends CharZipper {
                 commit();
                 lastAction = EditorAction.SINGLE_DELETE;
             }
+            FlexerState before = stateAt(cursor - 1);
+            FlexerState after = stateAt(cursor);
             deleteLeftOf(cursor--);
+            if (flexer.arePartners(before, after)) {
+                deleteRightOf(cursor);
+            }
             lastCursor = cursor;
             forgetDesiredColumn();
             adjustOrigin();
@@ -604,6 +602,51 @@ public final class Freditor extends CharZipper {
         setRowAndColumn(row, desiredColumn);
         adjustOrigin();
         lastAction = EditorAction.OTHER;
+    }
+
+    public void slurpForward() {
+        findClosingParen(length(), closing -> {
+            commit();
+            int backup = cursor;
+            cursor = closing;
+            moveCursorToNextForm();
+            if (cursor < length()) {
+                moveCursorAfterCurrentForm();
+                String form = deleteRange(origin, cursor);
+                insertAt(closing, form);
+                cursor = backup;
+                if (cursor == closing) {
+                    cursor += form.length();
+                }
+                adjustOrigin();
+                forgetDesiredColumn();
+                lastAction = EditorAction.OTHER;
+            } else {
+                past.pop().restore();
+            }
+        }, doNothing);
+    }
+
+    private void moveCursorToNextForm() {
+        final int len = length();
+        while (cursor < len) {
+            FlexerState state = stateAt(cursor);
+            if (Flexer.nestingDelta.getOrDefault(state, 0) == -1) {
+                origin = cursor + 1;
+            } else if (state != Flexer.NEWLINE && state != Flexer.SPACE_HEAD) {
+                return;
+            }
+            cursor = endOfLexeme(cursor);
+        }
+    }
+
+    private void moveCursorAfterCurrentForm() {
+        final int len = length();
+        int nesting = 0;
+        do {
+            nesting += Flexer.nestingDelta.getOrDefault(stateAt(cursor), 0);
+            cursor = endOfLexeme(cursor);
+        } while (nesting > 0 && cursor < len);
     }
 
     public void replace(String regex, String replacement) {

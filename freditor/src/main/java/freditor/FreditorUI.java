@@ -17,8 +17,8 @@ public class FreditorUI extends JComponent {
     public static final int ADDITIONAL_LINES = 1;
     public static final int ADDITIONAL_COLUMNS = 8;
 
-    public static final int frontWidth = Front.front.width;
-    public static final int frontHeight = Front.front.height;
+    public static final int frontWidth = Fronts.front.width;
+    public static final int frontHeight = Fronts.front.height;
 
     private final Freditor freditor;
 
@@ -286,6 +286,15 @@ public class FreditorUI extends JComponent {
                             freditor.redo();
                         }
                         break;
+
+                    default:
+                        switch (event.getKeyChar()) {
+                            case ')':
+                                if (isControlRespectivelyCommandDown(event)) {
+                                    freditor.slurpForward();
+                                }
+                                break;
+                        }
                 }
                 adjustView();
             }
@@ -300,7 +309,7 @@ public class FreditorUI extends JComponent {
                         int column = event.getX() / frontWidth + firstVisibleColumn;
                         freditor.clickRowAndColumn(row, column);
                         if (!event.isShiftDown()) freditor.adjustOrigin();
-                        if (event.getButton() != MouseEvent.BUTTON1) {
+                        if (event.getButton() == MouseEvent.BUTTON3) {
                             onRightClick.accept(lexemeAtCursor());
                         }
                         break;
@@ -425,19 +434,16 @@ public class FreditorUI extends JComponent {
         IntConsumer paint = position -> paintParensBackground(g, position);
 
         int start = freditor.homePositionOfRow(firstVisibleLine());
-        freditor.findOpeningParen(start, paint, doNothing);
+        freditor.findOpeningParen(start, paint, Freditor.doNothing);
 
         int end = freditor.homePositionOfRow(lastVisibleLine() + 2);
-        freditor.findClosingParen(end, paint, doNothing);
+        freditor.findClosingParen(end, paint, Freditor.doNothing);
     }
 
     private void paintParensBackground(Graphics g, int position) {
         g.setColor(MATCHING_PARENS_BACKGROUND_COLOR);
         g.fillRect(x(freditor.columnOfPosition(position)), y(freditor.rowOfPosition(position)), frontWidth, frontHeight);
     }
-
-    private static final Runnable doNothing = () -> {
-    };
 
     private void paintLexemes(Graphics g) {
         final int componentWidth = getWidth();
@@ -452,7 +458,7 @@ public class FreditorUI extends JComponent {
                 char c = freditor.charAt(i);
                 if (c != '\n') {
                     if (x >= 0) {
-                        Front.front.drawCharacter(g, x, y, c, rgb);
+                        Fronts.front.drawCharacter(g, x, y, c, rgb);
                     }
                     x += frontWidth;
                     if (x < componentWidth) continue;
@@ -469,7 +475,7 @@ public class FreditorUI extends JComponent {
         int cursorX = x(freditor.column());
         int cursorY = y(freditor.row());
         g.setColor(Color.BLACK);
-        Front.front.drawCharacter(g, cursorX, cursorY, '\177', 0x000000);
+        Fronts.front.drawCharacter(g, cursorX, cursorY, '\177', 0x000000);
     }
 
     public int cursor() {
@@ -482,6 +488,18 @@ public class FreditorUI extends JComponent {
 
     public int column() {
         return freditor.column();
+    }
+
+    public boolean selectionIsEmpty() {
+        return freditor.selectionIsEmpty();
+    }
+
+    public int selectionStart() {
+        return freditor.selectionStart();
+    }
+
+    public int selectionEnd() {
+        return freditor.selectionEnd();
     }
 
     public int lineOfPosition(int position) {
