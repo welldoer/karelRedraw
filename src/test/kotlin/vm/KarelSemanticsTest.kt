@@ -1,11 +1,10 @@
 package vm
 
 import common.Diagnostic
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import syntax.lexer.Lexer
 import syntax.parser.Parser
-import kotlin.test.fail
 import syntax.parser.program
 
 class KarelSemanticsTest {
@@ -26,14 +25,9 @@ class KarelSemanticsTest {
     private fun assertIllegal(messageSubstring: String, sourceCode: String) {
         val semantics = analyze(sourceCode)
         val errors = semantics.errors()
-        if (errors.isEmpty()) {
-            fail("""no errors found, but expected at least one containing "$messageSubstring"""")
-        }
+        assertFalse(errors.isEmpty())
         for (error in errors) {
-            val message = error.message
-            if (!message.contains(messageSubstring)) {
-                fail(""""$message" does not contain "$messageSubstring"""")
-            }
+            assertTrue(error.message.contains(messageSubstring))
         }
     }
 

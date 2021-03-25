@@ -85,10 +85,10 @@ public class FreditorUI extends JComponent {
         componentToRepaint.repaint();
     }
 
-    private static final int CTRL_OR_META_OR_ALT = InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK | InputEvent.ALT_DOWN_MASK;
+    private static final int CTRL_OR_META = InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK;
     private static final int CTRL_RESPECTIVELY_META = OperatingSystem.isMacintosh ? InputEvent.META_DOWN_MASK : InputEvent.CTRL_DOWN_MASK;
 
-    private static boolean isControlRespectivelyCommandDown(InputEvent event) {
+    public static boolean isControlRespectivelyCommandDown(InputEvent event) {
         return (event.getModifiersEx() & CTRL_RESPECTIVELY_META) != 0;
     }
 
@@ -114,7 +114,7 @@ public class FreditorUI extends JComponent {
             public void keyTyped(KeyEvent event) {
                 char ch = event.getKeyChar();
                 if (ch >= 32 && ch < 127 || ch >= 160 && ch < 256) {
-                    if ((event.getModifiersEx() & CTRL_OR_META_OR_ALT) == 0) {
+                    if ((event.getModifiersEx() & CTRL_OR_META) == 0) {
                         freditor.insertCharacter(ch);
                         charTyped = ch;
                     }
@@ -298,7 +298,7 @@ public class FreditorUI extends JComponent {
                     case 1:
                         int row = event.getY() / frontHeight + firstVisibleLine;
                         int column = event.getX() / frontWidth + firstVisibleColumn;
-                        freditor.setRowAndColumn(row, column);
+                        freditor.clickRowAndColumn(row, column);
                         if (!event.isShiftDown()) freditor.adjustOrigin();
                         if (event.getButton() != MouseEvent.BUTTON1) {
                             onRightClick.accept(lexemeAtCursor());

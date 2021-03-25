@@ -10,10 +10,10 @@ class ParserNegativeTest {
     private fun assertDiagnostic(messageSubstring: String, sourceCode: String) {
         val lexer = Lexer(sourceCode)
         val parser = Parser(lexer)
-        val exception = assertThrows<Diagnostic> {
+        val diagnostic = assertThrows<Diagnostic> {
             parser.program()
         }
-        Assertions.assertTrue(exception.message.contains(messageSubstring))
+        Assertions.assertTrue(diagnostic.message.contains(messageSubstring))
     }
 
     @Test
